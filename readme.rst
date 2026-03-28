@@ -50,3 +50,18 @@ Open your browser and visit:
 ```
 http://localhost:8080
 ```
+
+## 🛠️ Database Config
+
+update application/config/database.php
+
+```
+$db['default'] = [
+    'hostname' => 'db',
+    'username' => 'ci_user',
+    'password' => 'ci_pass',
+    'database' => 'ci_db',
+    'dbdriver' => 'mysqli',
+];
+```
+run `docker exec -it ci_db mysql -u ci_user -p` to access the MySQL shell and create the database.
