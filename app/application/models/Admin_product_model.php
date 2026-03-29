@@ -8,6 +8,21 @@ class Admin_product_model extends CI_Model
         return $this->db->insert('products', $data);
     }
 
+    public function getCatalogProducts($limit = NULL)
+    {
+        $query = $this->db
+            ->select('id, name, slug, description, price, stock, image, status, created_at')
+            ->from('products')
+            ->where('status', 1)
+            ->order_by('id', 'DESC');
+
+        if ($limit !== NULL) {
+            $query->limit((int) $limit);
+        }
+
+        return $query->get()->result_array();
+    }
+
     public function getRecentProducts($limit = 10)
     {
         return $this->db
@@ -26,6 +41,18 @@ class Admin_product_model extends CI_Model
             ->where('slug', $slug)
             ->limit(1)
             ->count_all_results() > 0;
+    }
+
+    public function findActiveProductBySlug($slug)
+    {
+        return $this->db
+            ->select('id, name, slug, description, price, stock, image, status, created_at')
+            ->from('products')
+            ->where('slug', $slug)
+            ->where('status', 1)
+            ->limit(1)
+            ->get()
+            ->row_array();
     }
 
     public function countAllProducts()

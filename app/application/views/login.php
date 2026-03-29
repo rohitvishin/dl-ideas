@@ -312,15 +312,15 @@
 </head>
 <body>
     <main class="auth-shell" role="main">
-        <section class="auth-hero" aria-label="Admin portal intro">
-            <span class="brand-badge">Admin Portal</span>
-            <h1>Secure control panel for business operations.</h1>
-            <p>Sign in with your administrator account to manage users, monitor activity, and maintain platform integrity.</p>
+        <section class="auth-hero" aria-label="Platform login intro">
+            <span class="brand-badge">Platform Login</span>
+            <h1>Secure access for administrators and users.</h1>
+            <p>Sign in with your credentials. Admin accounts open the dashboard, while user accounts go to the project listing.</p>
         </section>
 
-        <section class="auth-form-wrap" aria-label="Admin login form">
+        <section class="auth-form-wrap" aria-label="Login form">
             <h2>Welcome back</h2>
-            <p class="subtitle">Use your admin email and password to continue.</p>
+            <p class="subtitle">Use your registered email and password to continue.</p>
 
             <?php if ($this->session->flashdata('auth_error')): ?>
                 <div class="alert alert-danger"><?php echo html_escape($this->session->flashdata('auth_error')); ?></div>
@@ -334,7 +334,7 @@
                 <div class="alert alert-danger"><?php echo validation_errors(); ?></div>
             <?php endif; ?>
 
-            <?php echo form_open('admin/authenticate', array('autocomplete' => 'off')); ?>
+            <?php echo form_open('authenticate', array('autocomplete' => 'off')); ?>
                 <div class="field">
                     <label for="email">Email Address</label>
                     <input
@@ -342,7 +342,7 @@
                         id="email"
                         name="email"
                         value="<?php echo set_value('email'); ?>"
-                        placeholder="admin@company.com"
+                        placeholder="name@company.com"
                         required
                     >
                 </div>
@@ -358,10 +358,10 @@
                     >
                 </div>
 
-                <button type="submit" class="submit-btn">Sign In to Dashboard</button>
+                <button type="submit" class="submit-btn">Sign In</button>
             <?php echo form_close(); ?>
 
-            <p class="auth-footer">Protected area. Authorized administrators only.</p>
+            <p class="auth-footer">Protected area. Authorized accounts only.</p>
         </section>
     </main>
 </body>

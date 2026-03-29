@@ -3,6 +3,18 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Admin_user_model extends CI_Model
 {
+    public function findActiveUserByEmail($email)
+    {
+        return $this->db
+            ->select('id, name, email, password, role, status')
+            ->from('users')
+            ->where('email', $email)
+            ->where('status', 1)
+            ->limit(1)
+            ->get()
+            ->row_array();
+    }
+
     public function findActiveAdminByEmail($email)
     {
         return $this->db

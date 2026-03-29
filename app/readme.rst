@@ -1,82 +1,107 @@
-###################
-What is CodeIgniter
-###################
+Run migrations and seeders
+--------------------------
 
-CodeIgniter is an Application Development Framework - a toolkit - for people
-who build web sites using PHP. Its goal is to enable you to develop projects
-much faster than you could if you were writing code from scratch, by providing
-a rich set of libraries for commonly needed tasks, as well as a simple
-interface and logical structure to access these libraries. CodeIgniter lets
-you creatively focus on your project by minimizing the amount of code needed
-for a given task.
+This project includes a migration controller at ``/migrate``.
+Opening that route will:
 
-*************
-CodeIgniter 3
-*************
+* run all migrations up to the latest version
+* truncate the ``users`` and ``products`` tables
+* seed default users and products
 
-This repository is for the legacy version, CodeIgniter 3.
-`CodeIgniter 4 <https://github.com/codeigniter4/CodeIgniter4>`_ is the latest
-version of the framework.
+Run it in the browser:
 
-CodeIgniter 3 is the legacy version of the framework, intended for use with PHP
-5.6+. This version is in maintenance, receiving mostly just security updates.
+.. code-block:: text
 
-*******************
-Release Information
-*******************
+	http://localhost:8080/migrate
 
-This repo contains in-development code for future releases. To download the
-latest stable release please visit the `CodeIgniter Downloads
-<https://codeigniter.com/download>`_ page.
+Or trigger it from the command line:
 
-**************************
-Changelog and New Features
-**************************
+.. code-block:: bash
 
-You can find a list of all changes for each release in the `user
-guide change log <https://github.com/bcit-ci/CodeIgniter/blob/develop/user_guide_src/source/changelog.rst>`_.
+	curl http://localhost:8080/migrate
 
-*******************
-Server Requirements
-*******************
+Expected result:
 
-PHP version 5.6 or newer is recommended.
+.. code-block:: text
 
-It should work on 5.4.8 as well, but we strongly advise you NOT to run
-such old versions of PHP, because of potential security and performance
-issues, as well as missing features.
+	Migration + Seeding completed!
 
-************
-Installation
-************
+Seeded data
+-----------
 
-Please see the `installation section <https://codeigniter.com/userguide3/installation/index.html>`_
-of the CodeIgniter User Guide.
+The migration route currently runs these seeders:
 
-*******
-License
-*******
+* ``UserSeeder``
+* ``ProductSeeder``
 
-Please see the `license
-agreement <https://github.com/bcit-ci/CodeIgniter/blob/develop/user_guide_src/source/license.rst>`_.
+The default seeded users are:
 
-*********
-Resources
-*********
+* admin@example.com / admin123
+* user@example.com / user123
 
--  `User Guide <https://codeigniter.com/userguide3/>`_
--  `Contributing Guide <https://github.com/bcit-ci/CodeIgniter/blob/develop/contributing.md>`_
--  `Language File Translations <https://github.com/bcit-ci/codeigniter3-translations>`_
--  `Community Forums <https://forum.codeigniter.com/>`_
--  `Community Wiki <https://github.com/bcit-ci/CodeIgniter/wiki>`_
--  `Community Slack Channel <https://codeigniterchat.slack.com>`_
+Notes
+-----
 
-Report security issues to our `Security Panel <mailto:security@codeigniter.com>`_
-or via our `page on HackerOne <https://hackerone.com/codeigniter>`_, thank you.
+* The table truncation in the migration controller is intended for development use.
+* Re-running the migration route will clear and re-seed the ``users`` and ``products`` tables.
 
-***************
-Acknowledgement
-***************
+Stripe hosted checkout integration
+---------------------------------
 
-The CodeIgniter team would like to thank EllisLab, all the
-contributors to the CodeIgniter project and you, the CodeIgniter user.
+This project uses Stripe Hosted Checkout (redirect flow), not a custom card form.
+
+Checkout behavior
+-----------------
+
+* Only customer users can place orders.
+* Admin sessions are blocked from checkout.
+* Checkout starts from ``/buy-now/{product-slug}`` and posts to ``/checkout/place-order/{product-slug}``.
+* The backend creates a Stripe Checkout Session and redirects to the Stripe-hosted payment page.
+
+Stripe configuration
+--------------------
+
+Update the Stripe config file:
+
+* ``application/config/stripe.php``
+
+Required values:
+
+* ``stripe_secret_key``: your Stripe secret key (for example, ``sk_test_...``)
+* ``stripe_currency``: currency code used for payments (default: ``usd``)
+
+Routes used by checkout
+-----------------------
+
+* ``buy-now/(:any)`` -> ``user/buy/$1``
+* ``checkout/place-order/(:any)`` -> ``user/placeOrder/$1``
+* ``checkout/success`` -> ``user/paymentSuccess``
+* ``checkout/failure`` -> ``user/paymentFailure``
+
+What data is collected in checkout form
+---------------------------------------
+
+The checkout form collects:
+
+* first name, last name, email, phone
+* shipping address (line 1, optional line 2, city, state, postal code, country ISO-2)
+* quantity
+
+The backend validates required fields and email format before creating the Stripe session.
+
+Test flow
+---------
+
+1. Log in with a user account (for seeded data: ``user@example.com / user123``).
+2. Open the product list and click Buy Now.
+3. Fill checkout form and submit.
+4. Confirm redirect to ``checkout.stripe.com``.
+5. Complete payment with Stripe test cards.
+6. Verify redirect to success/cancel page.
+
+Troubleshooting
+---------------
+
+* If checkout does not redirect, check the purchase notice shown on checkout page.
+* If Stripe reports invalid request parameters, confirm that required shipping fields are filled.
+* In local non-production environments, the app retries once without SSL verification when CA certs are missing.

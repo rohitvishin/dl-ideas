@@ -27,53 +27,73 @@ class Admin extends CI_Controller
 			return;
 		}
 
+		if ($this->isUserAuthenticated()) {
+			redirect('user');
+			return;
+		}
+
 		$data = array(
-			'title' => 'Admin Login'
+			'title' => 'Login'
 		);
 
-		$this->load->view('admin/login', $data);
+		$this->load->view('login', $data);
 	}
 
 	public function authenticate()
 	{
 		if ($this->input->method(TRUE) !== 'POST') {
-			redirect('admin/login');
+			redirect('login');
 			return;
 		}
 
 		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email');
-		$this->form_validation->set_rules('password', 'Password', 'required|min_length[8]|max_length[255]');
+		$this->form_validation->set_rules('password', 'Password', 'required|max_length[255]');
 
 		if ($this->form_validation->run() === FALSE) {
-			$this->load->view('admin/login', array('title' => 'Admin Login'));
+			$this->load->view('login', array('title' => 'Login'));
 			return;
 		}
 
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
 		$password = (string) $this->input->post('password', FALSE);
 
-		$admin = $this->Admin_user_model->findActiveAdminByEmail($email);
+		$account = $this->Admin_user_model->findActiveUserByEmail($email);
 
-		if (!$admin || !$this->verifyPassword($password, $admin['password'])) {
+		if (!$account || !$this->verifyPassword($password, $account['password'])) {
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
-			redirect('admin/login');
+			redirect('login');
 			return;
 		}
 
 		// Upgrade plain-text legacy passwords to a strong hash after successful login.
-		if ($this->isLegacyPassword($admin['password'])) {
-			$this->Admin_user_model->updatePasswordHash((int) $admin['id'], password_hash($password, PASSWORD_DEFAULT));
+		if ($this->isLegacyPassword($account['password'])) {
+			$this->Admin_user_model->updatePasswordHash((int) $account['id'], password_hash($password, PASSWORD_DEFAULT));
 		}
 
 		$this->session->sess_regenerate(TRUE);
+
+		if ((string) $account['role'] === 'admin') {
+			$this->session->unset_userdata(array('user_logged_in', 'user_id', 'user_name', 'user_email'));
+			$this->session->set_userdata(array(
+				'admin_logged_in' => TRUE,
+				'admin_id' => (int) $account['id'],
+				'admin_name' => $account['name'],
+				'admin_email' => $account['email']
+			));
+
+			redirect('admin/dashboard');
+			return;
+		}
+
+		$this->session->unset_userdata(array('admin_logged_in', 'admin_id', 'admin_name', 'admin_email'));
 		$this->session->set_userdata(array(
-			'admin_logged_in' => TRUE,
-			'admin_id' => (int) $admin['id'],
-			'admin_name' => $admin['name'],
-			'admin_email' => $admin['email']
+			'user_logged_in' => TRUE,
+			'user_id' => (int) $account['id'],
+			'user_name' => $account['name'],
+			'user_email' => $account['email']
 		));
 
-		redirect('admin/dashboard');
+		redirect('user');
 	}
 
 	public function dashboard()
@@ -296,7 +316,7 @@ class Admin extends CI_Controller
 		$this->session->sess_regenerate(TRUE);
 		$this->session->set_flashdata('auth_success', 'You have been logged out successfully.');
 
-		redirect('admin/login');
+		redirect('login');
 	}
 
 	private function isAuthenticated()
@@ -308,9 +328,14 @@ class Admin extends CI_Controller
 	{
 		if (!$this->isAuthenticated()) {
 			$this->session->set_flashdata('auth_error', 'Please sign in to continue.');
-			redirect('admin/login');
+			redirect('login');
 			exit;
 		}
+	}
+
+	private function isUserAuthenticated()
+	{
+		return (bool) $this->session->userdata('user_logged_in');
 	}
 
 	private function verifyPassword($plainPassword, $storedPassword)
