@@ -89,6 +89,13 @@ The checkout form collects:
 
 The backend validates required fields and email format before creating the Stripe session.
 
+------------------------
+DUMMY CREDIT CARD
+NUMBER: 378282246310005
+EXPIRY: 08/28
+CVC: 123
+
+
 Test flow
 ---------
 
