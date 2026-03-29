@@ -83,3 +83,7 @@ defined('EXIT_USER_INPUT')     OR define('EXIT_USER_INPUT', 7); // invalid user 
 defined('EXIT_DATABASE')       OR define('EXIT_DATABASE', 8); // database error
 defined('EXIT__AUTO_MIN')      OR define('EXIT__AUTO_MIN', 9); // lowest automatically-assigned error code
 defined('EXIT__AUTO_MAX')      OR define('EXIT__AUTO_MAX', 125); // highest automatically-assigned error code
+
+defined('PRODUCT_UPLOAD_DIR') OR define('PRODUCT_UPLOAD_DIR', FCPATH.'uploads/products/');
+defined('PRODUCT_UPLOAD_URI') OR define('PRODUCT_UPLOAD_URI', 'uploads/products/');
+defined('PRODUCT_PLACEHOLDER_PATH') OR define('PRODUCT_PLACEHOLDER_PATH', PRODUCT_UPLOAD_URI.'placeholder.svg');
