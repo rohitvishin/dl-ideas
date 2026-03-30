@@ -489,7 +489,7 @@
 					</summary>
 					<div class="dropdown-menu">
 						<?php if ($is_logged_in): ?>
-							<a class="dropdown-link" href="<?php echo ($account_role === 'admin') ? site_url('admin/dashboard') : site_url('user'); ?>">My Account</a>
+							<a class="dropdown-link" href="<?php echo ($account_role === 'admin') ? site_url('admin/orders') : site_url('my-orders'); ?>"><?php echo ($account_role === 'admin') ? 'Order List' : 'My Orders'; ?></a>
 							<a class="dropdown-link logout" href="<?php echo site_url('logout'); ?>">Logout</a>
 						<?php else: ?>
 							<a class="dropdown-link" href="<?php echo site_url('login'); ?>">Sign In</a>

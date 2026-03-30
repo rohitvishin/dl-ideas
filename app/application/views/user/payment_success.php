@@ -72,11 +72,7 @@
 <body>
     <main class="card" role="main">
         <h1>Payment Successful</h1>
-        <p>Your payment has been completed successfully. Your order is now being processed.</p>
-
-        <?php if (!empty($session_id)): ?>
-            <p class="meta">Stripe Session: <?php echo html_escape($session_id); ?></p>
-        <?php endif; ?>
+        <p>Your payment has been completed successfully.</p>
 
         <div class="actions">
             <a class="btn btn-primary" href="<?php echo site_url('user'); ?>">Back to Catalog</a>

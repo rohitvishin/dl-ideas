@@ -16,6 +16,9 @@ class Migration_Create_orders extends CI_Migration {
                 'default' => 'pending'
             ],
             'payment_method' => ['type'=>'VARCHAR','constraint'=>50],
+            'stripe_session_id' => ['type'=>'VARCHAR','constraint'=>255,'default' => NULL],
+            'stripe_payment_intent_id' => ['type'=>'VARCHAR','constraint'=>255,'default' => NULL],
+            'stripe_charge_id' => ['type'=>'VARCHAR','constraint'=>255,'default' => NULL],
             'created_at' => ['type'=>'DATETIME'],
         ]);
 

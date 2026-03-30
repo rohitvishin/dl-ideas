@@ -255,6 +255,7 @@
                 <a class="nav-link is-active" href="<?php echo site_url('admin/dashboard'); ?>">Dashboard</a>
                 <a class="nav-link" href="<?php echo site_url('admin/users'); ?>">Users</a>
                 <a class="nav-link" href="<?php echo site_url('admin/products'); ?>">Products</a>
+                <a class="nav-link" href="<?php echo site_url('admin/orders'); ?>">Orders</a>
                 <a class="nav-link" href="<?php echo site_url('admin/logout'); ?>">Sign Out</a>
             </nav>
         </header>
