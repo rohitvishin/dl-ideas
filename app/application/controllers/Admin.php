@@ -325,10 +325,11 @@ class Admin extends CI_Controller
 		}
 
 		$imagePath = PRODUCT_PLACEHOLDER_PATH;
+
 		if (isset($_FILES['image']) && !empty($_FILES['image']['name'])) {
 			$uploadConfig = array(
 				'upload_path' => PRODUCT_UPLOAD_DIR,
-				'allowed_types' => 'jpg|jpeg|png|webp|gif',
+				'allowed_types' => 'jpg|png',
 				'max_size' => 4096,
 				'encrypt_name' => TRUE
 			);

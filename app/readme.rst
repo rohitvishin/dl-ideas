@@ -105,6 +105,7 @@ Test flow
 4. Confirm redirect to ``checkout.stripe.com``.
 5. Complete payment with Stripe test cards.
 6. Verify redirect to success/cancel page.
+7. Check for order confirmation email (if email is configured).
 
 Troubleshooting
 ---------------

@@ -18,7 +18,7 @@ class ProductSeeder {
                 'slug' => 'product-1',
                 'price' => 100,
                 'stock' => 5,
-                'image' => 'p1.jpg',
+                'image' => null,
                 'created_at' => date('Y-m-d H:i:s')
             ],
             [
@@ -26,7 +26,7 @@ class ProductSeeder {
                 'slug' => 'product-2',
                 'price' => 200,
                 'stock' => 10,
-                'image' => 'p2.jpg',
+                'image' => null,
                 'created_at' => date('Y-m-d H:i:s')
             ]
         ];

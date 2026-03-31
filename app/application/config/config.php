@@ -473,3 +473,42 @@ $config['time_reference'] = 'local';
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| DATABASE CONFIGURATION
+|--------------------------------------------------------------------------
+*/
+$db_config['default'] = array(
+	'dsn'	=> '',
+	'hostname' => 'db',
+	'username' => 'ci_user',
+	'password' => 'ci_pass',
+	'database' => 'ci_db',
+	'dbdriver' => 'mysqli',
+	'dbprefix' => '',
+	'pconnect' => FALSE,
+	'db_debug' => (ENVIRONMENT !== 'production'),
+	'cache_on' => FALSE,
+	'cachedir' => '',
+	'char_set' => 'utf8',
+	'dbcollat' => 'utf8_general_ci',
+	'swap_pre' => '',
+	'encrypt' => FALSE,
+	'compress' => FALSE,
+	'stricton' => FALSE,
+	'failover' => array(),
+	'save_queries' => TRUE
+);
+$config['db_default'] = $db_config['default'];
+
+/*
+|--------------------------------------------------------------------------
+| MAIL / SMTP CONFIGURATION
+|--------------------------------------------------------------------------
+*/
+$config['smtp_user'] = 'rohitvishwakarma65@gmail.com';
+$config['smtp_pass'] = 'skxpoawkmkxunqvh';
+$config['smtp_host'] = 'smtp.gmail.com';
+$config['smtp_port'] = 587;
+$config['smtp_crypto'] = 'tls';

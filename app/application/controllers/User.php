@@ -431,6 +431,7 @@ class User extends CI_Controller
                         }
                     }
 
+                    $customerEmail = trim((string) ($meta['customer_email'] ?? ($session['customer_email'] ?? '')));
                     $userId     = (int) ($meta['user_id']    ?? 0);
                     $productId  = (int) ($meta['product_id'] ?? 0);
                     $quantity   = max(1, (int) ($meta['quantity']  ?? 1));
@@ -496,6 +497,18 @@ class User extends CI_Controller
                         ));
 
                         $this->Admin_product_model->decrementStock($productId, $quantity);
+                    }
+
+                    // Send order confirmation email to checkout email entered by user.
+                    if ($orderId > 0) {
+                        $this->sendOrderSuccessEmail($customerEmail, array(
+                            'order_id' => $orderId,
+                            'total_amount' => $totalAmount,
+                            'payment_method' => 'stripe',
+                            'stripe_session_id' => $sessionId,
+                            'stripe_payment_intent_id' => $paymentIntentId,
+                            'stripe_charge_id' => $chargeId,
+                        ));
                     }
                 }
             }
@@ -612,6 +625,83 @@ class User extends CI_Controller
         );
 
         $this->load->view('invoice/order_receipt', $data);
+    }
+
+    private function sendOrderSuccessEmail($toEmail, array $orderData)
+    {
+        $toEmail = trim((string) $toEmail);
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            return FALSE;
+        }
+
+        $orderId = (int) ($orderData['order_id'] ?? 0);
+        $totalAmount = (float) ($orderData['total_amount'] ?? 0);
+        $paymentMethod = (string) ($orderData['payment_method'] ?? 'stripe');
+        $sessionId = (string) ($orderData['stripe_session_id'] ?? '');
+        $paymentIntentId = (string) ($orderData['stripe_payment_intent_id'] ?? '');
+        $chargeId = (string) ($orderData['stripe_charge_id'] ?? '');
+
+        $receiptUrl = site_url('my-orders/receipt/' . $orderId);
+        $invoiceUrl = site_url('my-orders/invoice/' . $orderId);
+
+        $smtpUser = $this->config->item('smtp_user') ?: '';
+        $smtpPass = $this->config->item('smtp_pass') ?: '';
+        $smtpHost = $this->config->item('smtp_host') ?: 'smtp.gmail.com';
+        $smtpPort = $this->config->item('smtp_port') ?: 587;
+        $smtpCrypto = $this->config->item('smtp_crypto') ?: 'tls';
+
+        if ($smtpHost === '') {
+            $smtpHost = 'smtp.gmail.com';
+        }
+        if ($smtpPort < 1) {
+            $smtpPort = 587;
+        }
+        if ($smtpCrypto === '') {
+            $smtpCrypto = 'tls';
+        }
+
+        if ($smtpUser === '' || $smtpPass === '') {
+            log_message('error', 'Order confirmation email skipped: SMTP_USER or SMTP_PASS is not configured.');
+            return FALSE;
+        }        
+
+        $mailConfig = array(
+            'protocol' => 'smtp',
+            'smtp_host' => $smtpHost,
+            'smtp_port' => $smtpPort,
+            'smtp_user' => $smtpUser,
+            'smtp_pass' => $smtpPass,
+            'smtp_crypto' => $smtpCrypto,
+            'mailtype' => 'html',
+            'charset'  => 'utf-8',
+            'crlf'     => "\r\n",
+            'newline'  => "\r\n",
+        );
+
+        $this->load->library('email');
+        $this->email->initialize($mailConfig);
+        $this->email->from($smtpUser, 'Ecom Nova');
+        $this->email->to($toEmail);
+        $this->email->subject('Order Confirmation #' . $orderId);
+
+        $message = '<h2>Payment Successful</h2>'
+            . '<p>Your order has been placed successfully.</p>'
+            . '<p><strong>Order ID:</strong> #' . (int) $orderId . '</p>'
+            . '<p><strong>Total Paid:</strong> $' . number_format($totalAmount, 2) . '</p>'
+            . '<p><strong>Payment Method:</strong> ' . html_escape($paymentMethod) . '</p>'
+            . '<p><strong>Transaction ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : ($paymentIntentId !== '' ? $paymentIntentId : $sessionId)) . '</p>'
+            . '<p><strong>Payment Intent ID:</strong> ' . html_escape($paymentIntentId !== '' ? $paymentIntentId : 'N/A') . '</p>'
+            . '<p><strong>Charge ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : 'N/A') . '</p>'
+            . '<p><a href="' . html_escape($receiptUrl) . '">View Receipt</a> | <a href="' . html_escape($invoiceUrl) . '">View Invoice</a></p>';
+
+        $this->email->message($message);
+
+        $sent = $this->email->send();
+        if (!$sent) {
+            log_message('error', 'Order confirmation email failed for order #' . $orderId . ' to ' . $toEmail);
+        }
+
+        return $sent;
     }
 
     public function paymentFailure()
