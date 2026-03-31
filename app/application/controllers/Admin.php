@@ -200,6 +200,72 @@ class Admin extends CI_Controller
 		$this->load->view('admin/products_create', $data);
 	}
 
+	public function orders()
+	{
+		$this->requireAuth();
+
+		$data = array(
+			'title' => 'Order List',
+			'admin_name' => (string) $this->session->userdata('admin_name'),
+			'admin_email' => (string) $this->session->userdata('admin_email'),
+			'orders' => $this->Admin_order_model->getRecentOrdersForAdmin(200)
+		);
+
+		$this->load->view('admin/orders_list', $data);
+	}
+
+	public function invoice($orderId = 0)
+	{
+		$this->requireAuth();
+
+		$orderId = (int) $orderId;
+		if ($orderId < 1) {
+			show_404();
+			return;
+		}
+
+		$order = $this->Admin_order_model->getOrderDetailsForAdmin($orderId);
+		if (!$order) {
+			show_404();
+			return;
+		}
+
+		$data = array(
+			'title' => 'Invoice #' . (int) $order['id'],
+			'order' => $order,
+			'viewer_role' => 'admin',
+			'viewer_name' => (string) $this->session->userdata('admin_name')
+		);
+
+		$this->load->view('invoice/order_invoice', $data);
+	}
+
+	public function receipt($orderId = 0)
+	{
+		$this->requireAuth();
+
+		$orderId = (int) $orderId;
+		if ($orderId < 1) {
+			show_404();
+			return;
+		}
+
+		$order = $this->Admin_order_model->getOrderDetailsForAdmin($orderId);
+		if (!$order) {
+			show_404();
+			return;
+		}
+
+		$data = array(
+			'title' => 'Receipt #' . (int) $order['id'],
+			'order' => $order,
+			'viewer_role' => 'admin',
+			'viewer_name' => (string) $this->session->userdata('admin_name')
+		);
+
+		$this->load->view('invoice/order_receipt', $data);
+	}
+
 	public function createProduct()
 	{
 		$this->requireAuth();
@@ -259,10 +325,11 @@ class Admin extends CI_Controller
 		}
 
 		$imagePath = PRODUCT_PLACEHOLDER_PATH;
+
 		if (isset($_FILES['image']) && !empty($_FILES['image']['name'])) {
 			$uploadConfig = array(
 				'upload_path' => PRODUCT_UPLOAD_DIR,
-				'allowed_types' => 'jpg|jpeg|png|webp|gif',
+				'allowed_types' => 'jpg|png',
 				'max_size' => 4096,
 				'encrypt_name' => TRUE
 			);

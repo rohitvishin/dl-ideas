@@ -59,4 +59,13 @@ class Admin_product_model extends CI_Model
     {
         return (int) $this->db->count_all('products');
     }
+
+    public function decrementStock($id, $qty = 1)
+    {
+        $qty = max(1, (int) $qty);
+        $this->db
+            ->set('stock', 'GREATEST(0, stock - ' . $qty . ')', FALSE)
+            ->where('id', (int) $id)
+            ->update('products');
+    }
 }

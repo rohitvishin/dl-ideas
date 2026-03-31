@@ -12,6 +12,7 @@ class User extends CI_Controller
         $this->load->helper('url');
         $this->load->config('stripe', TRUE);
         $this->load->model('Admin_product_model');
+        $this->load->model('Admin_order_model');
     }
 
     public function index()
@@ -20,6 +21,7 @@ class User extends CI_Controller
         $isAdminLoggedIn = (bool) $this->session->userdata('admin_logged_in');
         $isUserLoggedIn = (bool) $this->session->userdata('user_logged_in');
         $isLoggedIn = $isAdminLoggedIn || $isUserLoggedIn;
+        $account_role = $isAdminLoggedIn ? 'admin' : 'user';
         $accountName = $this->session->userdata('user_name');
         $accountEmail = $this->session->userdata('user_email');
 
@@ -32,6 +34,7 @@ class User extends CI_Controller
             'products' => $products,
             'product_count' => count($products),
             'purchase_notice' => (string) $this->session->flashdata('purchase_notice'),
+            'account_role' => $account_role,
             'is_logged_in' => $isLoggedIn,
             'account_name' => $accountName,
             'account_email' => $accountEmail,
@@ -263,6 +266,14 @@ class User extends CI_Controller
                 'shipping_state'      => $state,
                 'shipping_postal_code'=> $postalCode,
                 'shipping_country'    => $country,
+                'user_id'             => (string) $this->session->userdata('user_id'),
+                'product_id'          => (string) $product['id'],
+                'quantity'            => (string) $quantity,
+                'unit_price'          => (string) $product['price'],
+                'full_name'           => trim($firstName . ' ' . $lastName),
+                'phone'               => $phone,
+                'address_line1'       => $addressLine1,
+                'address_line2'       => $addressLine2,
             ),
             'line_items'  => array(
                 array(
@@ -353,12 +364,344 @@ class User extends CI_Controller
     {
         $sessionId = (string) $this->input->get('session_id', TRUE);
 
+        // Validate session_id format to prevent SSRF
+        if (!preg_match('/^cs_(test|live)_[a-zA-Z0-9]+$/', $sessionId)) {
+            redirect('user');
+            return;
+        }
+
+        $this->load->model('Admin_order_model');
+
+        // Idempotency: if already processed, skip insertion
+        $alreadyProcessed = $this->Admin_order_model->orderExistsByStripeSession($sessionId);
+
+        if (!$alreadyProcessed) {
+            $secretKey = (string) $this->config->item('stripe_secret_key', 'stripe');
+            $sessionEndpoint = 'https://api.stripe.com/v1/checkout/sessions/' . urlencode($sessionId) . '?expand%5B%5D=payment_intent.latest_charge';
+
+            $ch = curl_init($sessionEndpoint);
+            curl_setopt($ch, CURLOPT_HTTPHEADER,     array('Authorization: Bearer ' . $secretKey));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+            curl_setopt($ch, CURLOPT_TIMEOUT,        30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+
+            $responseBody = curl_exec($ch);
+            $statusCode   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError    = curl_error($ch);
+            curl_close($ch);
+
+            // Retry without SSL verification in non-production (missing CA bundle)
+            $canRetryWithoutVerify = defined('ENVIRONMENT') && ENVIRONMENT !== 'production'
+                && $responseBody === FALSE
+                && stripos($curlError, 'SSL certificate') !== FALSE;
+
+            if ($canRetryWithoutVerify) {
+                $ch = curl_init($sessionEndpoint);
+                curl_setopt($ch, CURLOPT_HTTPHEADER,     array('Authorization: Bearer ' . $secretKey));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+                curl_setopt($ch, CURLOPT_TIMEOUT,        30);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+                $responseBody = curl_exec($ch);
+                $statusCode   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+            }
+
+            if ($responseBody !== FALSE && $statusCode === 200) {
+                $session = json_decode($responseBody, TRUE);
+
+                if (is_array($session) && ($session['payment_status'] ?? '') === 'paid') {
+                    $meta       = isset($session['metadata']) && is_array($session['metadata']) ? $session['metadata'] : array();
+                    $paymentIntentId = '';
+                    $chargeId = '';
+                    if (isset($session['payment_intent'])) {
+                        if (is_array($session['payment_intent'])) {
+                            $paymentIntentId = trim((string) ($session['payment_intent']['id'] ?? ''));
+                            if (isset($session['payment_intent']['latest_charge'])) {
+                                if (is_array($session['payment_intent']['latest_charge'])) {
+                                    $chargeId = trim((string) ($session['payment_intent']['latest_charge']['id'] ?? ''));
+                                } else {
+                                    $chargeId = trim((string) $session['payment_intent']['latest_charge']);
+                                }
+                            }
+                        } else {
+                            $paymentIntentId = trim((string) $session['payment_intent']);
+                        }
+                    }
+
+                    $customerEmail = trim((string) ($meta['customer_email'] ?? ($session['customer_email'] ?? '')));
+                    $userId     = (int) ($meta['user_id']    ?? 0);
+                    $productId  = (int) ($meta['product_id'] ?? 0);
+                    $quantity   = max(1, (int) ($meta['quantity']  ?? 1));
+                    $unitPrice  = (float) ($meta['unit_price']  ?? 0);
+                    $fullName   = trim((string) ($meta['full_name']     ?? ''));
+                    $phone      = trim((string) ($meta['phone']         ?? ''));
+                    $addrLine1  = trim((string) ($meta['address_line1'] ?? ''));
+                    $addrLine2  = trim((string) ($meta['address_line2'] ?? ''));
+                    $city       = trim((string) ($meta['shipping_city']        ?? ''));
+                    $state      = trim((string) ($meta['shipping_state']       ?? ''));
+                    $postalCode = trim((string) ($meta['shipping_postal_code'] ?? ''));
+
+                    $totalAmount = round($unitPrice * $quantity, 2);
+                    if ($totalAmount <= 0) {
+                        $totalAmount = round((float) ($session['amount_total'] ?? 0) / 100, 2);
+                    }
+
+                    $addressLine = $addrLine1;
+                    if ($addrLine2 !== '') {
+                        $addressLine .= ', ' . $addrLine2;
+                    }
+
+                    // Insert address
+                    $addressId = 0;
+                    if ($userId > 0 && $addressLine !== '') {
+                        $this->db->insert('addresses', array(
+                            'user_id'      => $userId,
+                            'full_name'    => $fullName,
+                            'phone'        => $phone,
+                            'address_line' => $addressLine,
+                            'city'         => $city,
+                            'state'        => $state,
+                            'pincode'      => $postalCode,
+                            'created_at'   => date('Y-m-d H:i:s'),
+                        ));
+                        $addressId = (int) $this->db->insert_id();
+                    }
+
+                    // Insert order
+                    $orderId = 0;
+                    if ($userId > 0) {
+                        $this->db->insert('orders', array(
+                            'user_id'           => $userId,
+                            'address_id'        => $addressId,
+                            'total_amount'      => $totalAmount,
+                            'status'            => 'paid',
+                            'payment_method'    => 'stripe',
+                            'stripe_session_id' => $sessionId,
+                            'stripe_payment_intent_id' => $paymentIntentId !== '' ? $paymentIntentId : NULL,
+                            'stripe_charge_id'  => $chargeId !== '' ? $chargeId : NULL,
+                            'created_at'        => date('Y-m-d H:i:s'),
+                        ));
+                        $orderId = (int) $this->db->insert_id();
+                    }
+
+                    // Insert order item and decrement stock
+                    if ($orderId > 0 && $productId > 0) {
+                        $this->db->insert('order_items', array(
+                            'order_id'   => $orderId,
+                            'product_id' => $productId,
+                            'quantity'   => $quantity,
+                            'price'      => $unitPrice,
+                        ));
+
+                        $this->Admin_product_model->decrementStock($productId, $quantity);
+                    }
+
+                    // Send order confirmation email to checkout email entered by user.
+                    if ($orderId > 0) {
+                        $this->sendOrderSuccessEmail($customerEmail, array(
+                            'order_id' => $orderId,
+                            'total_amount' => $totalAmount,
+                            'payment_method' => 'stripe',
+                            'stripe_session_id' => $sessionId,
+                            'stripe_payment_intent_id' => $paymentIntentId,
+                            'stripe_charge_id' => $chargeId,
+                        ));
+                    }
+                }
+            }
+        }
+
         $data = array(
             'title'      => 'Payment Successful',
             'session_id' => $sessionId,
         );
 
         $this->load->view('user/payment_success', $data);
+    }
+
+    public function myOrders()
+    {
+        $isAdminLoggedIn = (bool) $this->session->userdata('admin_logged_in');
+        $isUserLoggedIn  = (bool) $this->session->userdata('user_logged_in');
+
+        if (!$isUserLoggedIn) {
+            if ($isAdminLoggedIn) {
+                redirect('admin/orders');
+                return;
+            }
+
+            $this->session->set_flashdata('auth_error', 'Please log in to view your orders.');
+            redirect('login');
+            return;
+        }
+
+        $userId = (int) $this->session->userdata('user_id');
+        $data = array(
+            'title' => 'My Orders',
+            'account_name' => (string) $this->session->userdata('user_name'),
+            'account_email' => (string) $this->session->userdata('user_email'),
+            'orders' => $this->Admin_order_model->getOrdersForUser($userId, 100),
+        );
+
+        $this->load->view('user/my_orders', $data);
+    }
+
+    public function invoice($orderId = 0)
+    {
+        $isAdminLoggedIn = (bool) $this->session->userdata('admin_logged_in');
+        $isUserLoggedIn  = (bool) $this->session->userdata('user_logged_in');
+
+        if (!$isUserLoggedIn) {
+            if ($isAdminLoggedIn) {
+                redirect('admin/orders/invoice/' . (int) $orderId);
+                return;
+            }
+
+            $this->session->set_flashdata('auth_error', 'Please log in to view invoice.');
+            redirect('login');
+            return;
+        }
+
+        $orderId = (int) $orderId;
+        if ($orderId < 1) {
+            show_404();
+            return;
+        }
+
+        $userId = (int) $this->session->userdata('user_id');
+        $order = $this->Admin_order_model->getOrderDetailsForUser($orderId, $userId);
+        if (!$order) {
+            show_404();
+            return;
+        }
+
+        $data = array(
+            'title' => 'Invoice #' . (int) $order['id'],
+            'order' => $order,
+            'viewer_role' => 'user',
+            'viewer_name' => (string) $this->session->userdata('user_name')
+        );
+
+        $this->load->view('invoice/order_invoice', $data);
+    }
+
+    public function receipt($orderId = 0)
+    {
+        $isAdminLoggedIn = (bool) $this->session->userdata('admin_logged_in');
+        $isUserLoggedIn  = (bool) $this->session->userdata('user_logged_in');
+
+        if (!$isUserLoggedIn) {
+            if ($isAdminLoggedIn) {
+                redirect('admin/orders/receipt/' . (int) $orderId);
+                return;
+            }
+
+            $this->session->set_flashdata('auth_error', 'Please log in to view receipt.');
+            redirect('login');
+            return;
+        }
+
+        $orderId = (int) $orderId;
+        if ($orderId < 1) {
+            show_404();
+            return;
+        }
+
+        $userId = (int) $this->session->userdata('user_id');
+        $order = $this->Admin_order_model->getOrderDetailsForUser($orderId, $userId);
+        if (!$order) {
+            show_404();
+            return;
+        }
+
+        $data = array(
+            'title' => 'Receipt #' . (int) $order['id'],
+            'order' => $order,
+            'viewer_role' => 'user',
+            'viewer_name' => (string) $this->session->userdata('user_name')
+        );
+
+        $this->load->view('invoice/order_receipt', $data);
+    }
+
+    private function sendOrderSuccessEmail($toEmail, array $orderData)
+    {
+        $toEmail = trim((string) $toEmail);
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            return FALSE;
+        }
+
+        $orderId = (int) ($orderData['order_id'] ?? 0);
+        $totalAmount = (float) ($orderData['total_amount'] ?? 0);
+        $paymentMethod = (string) ($orderData['payment_method'] ?? 'stripe');
+        $sessionId = (string) ($orderData['stripe_session_id'] ?? '');
+        $paymentIntentId = (string) ($orderData['stripe_payment_intent_id'] ?? '');
+        $chargeId = (string) ($orderData['stripe_charge_id'] ?? '');
+
+        $receiptUrl = site_url('my-orders/receipt/' . $orderId);
+        $invoiceUrl = site_url('my-orders/invoice/' . $orderId);
+
+        $smtpUser = $this->config->item('smtp_user') ?: '';
+        $smtpPass = $this->config->item('smtp_pass') ?: '';
+        $smtpHost = $this->config->item('smtp_host') ?: 'smtp.gmail.com';
+        $smtpPort = $this->config->item('smtp_port') ?: 587;
+        $smtpCrypto = $this->config->item('smtp_crypto') ?: 'tls';
+
+        if ($smtpHost === '') {
+            $smtpHost = 'smtp.gmail.com';
+        }
+        if ($smtpPort < 1) {
+            $smtpPort = 587;
+        }
+        if ($smtpCrypto === '') {
+            $smtpCrypto = 'tls';
+        }
+
+        if ($smtpUser === '' || $smtpPass === '') {
+            log_message('error', 'Order confirmation email skipped: SMTP_USER or SMTP_PASS is not configured.');
+            return FALSE;
+        }        
+
+        $mailConfig = array(
+            'protocol' => 'smtp',
+            'smtp_host' => $smtpHost,
+            'smtp_port' => $smtpPort,
+            'smtp_user' => $smtpUser,
+            'smtp_pass' => $smtpPass,
+            'smtp_crypto' => $smtpCrypto,
+            'mailtype' => 'html',
+            'charset'  => 'utf-8',
+            'crlf'     => "\r\n",
+            'newline'  => "\r\n",
+        );
+
+        $this->load->library('email');
+        $this->email->initialize($mailConfig);
+        $this->email->from($smtpUser, 'Ecom Nova');
+        $this->email->to($toEmail);
+        $this->email->subject('Order Confirmation #' . $orderId);
+
+        $message = '<h2>Payment Successful</h2>'
+            . '<p>Your order has been placed successfully.</p>'
+            . '<p><strong>Order ID:</strong> #' . (int) $orderId . '</p>'
+            . '<p><strong>Total Paid:</strong> $' . number_format($totalAmount, 2) . '</p>'
+            . '<p><strong>Payment Method:</strong> ' . html_escape($paymentMethod) . '</p>'
+            . '<p><strong>Transaction ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : ($paymentIntentId !== '' ? $paymentIntentId : $sessionId)) . '</p>'
+            . '<p><strong>Payment Intent ID:</strong> ' . html_escape($paymentIntentId !== '' ? $paymentIntentId : 'N/A') . '</p>'
+            . '<p><strong>Charge ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : 'N/A') . '</p>'
+            . '<p><a href="' . html_escape($receiptUrl) . '">View Receipt</a> | <a href="' . html_escape($invoiceUrl) . '">View Invoice</a></p>';
+
+        $this->email->message($message);
+
+        $sent = $this->email->send();
+        if (!$sent) {
+            log_message('error', 'Order confirmation email failed for order #' . $orderId . ' to ' . $toEmail);
+        }
+
+        return $sent;
     }
 
     public function paymentFailure()
