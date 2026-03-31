@@ -63,7 +63,7 @@
                                 ?>
                                 <tr>
                                     <td>
-                                        <strong>#<?php echo (int) $order['id']; ?></strong><br>
+                                        <a href="#" class="fw-bold text-decoration-none view-order-logs" data-order-id="<?php echo (int) $order['id']; ?>">#<?php echo (int) $order['id']; ?></a><br>
                                         <small class="text-muted"><?php echo html_escape((string) ($order['payment_method'] ?? '-')); ?></small>
                                     </td>
                                     <td>
@@ -112,7 +112,79 @@
         <?php endif; ?>
     </main>
 
+    <!-- Order Logs Modal -->
+    <div class="modal fade" id="orderLogsModal" tabindex="-1" aria-labelledby="orderLogsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="orderLogsModalLabel">Logs for Order #<span id="logsOrderId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="orderLogsBody">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var modal = new bootstrap.Modal(document.getElementById('orderLogsModal'));
+        var logsBody = document.getElementById('orderLogsBody');
+        var logsOrderId = document.getElementById('logsOrderId');
+
+        document.querySelectorAll('.view-order-logs').forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                var orderId = this.getAttribute('data-order-id');
+                logsOrderId.textContent = orderId;
+                logsBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+                modal.show();
+
+                fetch('<?php echo site_url('admin/order_logs/'); ?>' + encodeURIComponent(orderId))
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (!data.logs || data.logs.length === 0) {
+                            logsBody.innerHTML = '<p class="text-muted text-center mb-0">No logs found for this order.</p>';
+                            return;
+                        }
+                        var html = '<table class="table table-sm table-hover align-middle mb-0">';
+                        html += '<thead class="table-light"><tr><th>Time</th><th>Event</th><th>IP</th><th>Details</th></tr></thead><tbody>';
+                        data.logs.forEach(function (log) {
+                            var details = Object.assign({}, log.details);
+                            delete details.event;
+                            var detailStr = Object.keys(details).length > 0
+                                ? '<small class="text-break">' + escapeHtml(JSON.stringify(details)) + '</small>'
+                                : '<span class="text-muted">-</span>';
+                            html += '<tr>'
+                                + '<td class="text-nowrap small">' + escapeHtml(log.created_at) + '</td>'
+                                + '<td><span class="badge bg-info-subtle text-info-emphasis">' + escapeHtml(log.event) + '</span></td>'
+                                + '<td class="small">' + escapeHtml(log.ip_address) + '</td>'
+                                + '<td class="small" style="max-width:350px;overflow-x:auto">' + detailStr + '</td>'
+                                + '</tr>';
+                        });
+                        html += '</tbody></table>';
+                        logsBody.innerHTML = html;
+                    })
+                    .catch(function () {
+                        logsBody.innerHTML = '<p class="text-danger text-center mb-0">Failed to load logs.</p>';
+                    });
+            });
+        });
+
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str || ''));
+            return div.innerHTML;
+        }
+    });
+    </script>
 </body>
 </html>

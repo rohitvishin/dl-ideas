@@ -10,9 +10,10 @@ class Admin extends CI_Controller
 		$this->load->database();
 		$this->load->library(array('session', 'form_validation'));
 		$this->load->helper(array('url', 'form'));
-		$this->load->model('Admin_user_model');
-		$this->load->model('Admin_product_model');
-		$this->load->model('Admin_order_model');
+		$this->load->model('User_model');
+		$this->load->model('Product_model');
+		$this->load->model('Order_model');
+		$this->load->model('Logs_model');
 	}
 
 	public function index()
@@ -57,7 +58,7 @@ class Admin extends CI_Controller
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
 		$password = (string) $this->input->post('password', FALSE);
 
-		$account = $this->Admin_user_model->findActiveUserByEmail($email);
+		$account = $this->User_model->findActiveUserByEmail($email);
 
 		if (!$account || !$this->verifyPassword($password, $account['password'])) {
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
@@ -67,13 +68,12 @@ class Admin extends CI_Controller
 
 		// Upgrade plain-text legacy passwords to a strong hash after successful login.
 		if ($this->isLegacyPassword($account['password'])) {
-			$this->Admin_user_model->updatePasswordHash((int) $account['id'], password_hash($password, PASSWORD_DEFAULT));
+			$this->User_model->updatePasswordHash((int) $account['id'], password_hash($password, PASSWORD_DEFAULT));
 		}
 
 		$this->session->sess_regenerate(TRUE);
 
 		if ((string) $account['role'] === 'admin') {
-			$this->session->unset_userdata(array('user_logged_in', 'user_id', 'user_name', 'user_email'));
 			$this->session->set_userdata(array(
 				'admin_logged_in' => TRUE,
 				'admin_id' => (int) $account['id'],
@@ -85,7 +85,6 @@ class Admin extends CI_Controller
 			return;
 		}
 
-		$this->session->unset_userdata(array('admin_logged_in', 'admin_id', 'admin_name', 'admin_email'));
 		$this->session->set_userdata(array(
 			'user_logged_in' => TRUE,
 			'user_id' => (int) $account['id'],
@@ -104,9 +103,9 @@ class Admin extends CI_Controller
 			'title' => 'Admin Dashboard',
 			'admin_name' => (string) $this->session->userdata('admin_name'),
 			'admin_email' => (string) $this->session->userdata('admin_email'),
-			'total_users' => $this->Admin_user_model->countAllUsers(),
-			'total_products' => $this->Admin_product_model->countAllProducts(),
-			'total_orders' => $this->Admin_order_model->countAllOrders()
+			'total_users' => $this->User_model->countAllUsers(),
+			'total_products' => $this->Product_model->countAllProducts(),
+			'total_orders' => $this->Order_model->countAllOrders()
 		);
 
 		$this->load->view('admin/dashboard', $data);
@@ -120,7 +119,7 @@ class Admin extends CI_Controller
 			'title' => 'Create Users',
 			'admin_name' => (string) $this->session->userdata('admin_name'),
 			'admin_email' => (string) $this->session->userdata('admin_email'),
-			'recent_users' => $this->Admin_user_model->getRecentUsers(12),
+			'recent_users' => $this->User_model->getRecentUsers(12),
 			'form_error' => (string) $this->session->flashdata('user_form_error'),
 			'form_success' => (string) $this->session->flashdata('user_form_success'),
 			'old_input' => (array) $this->session->flashdata('user_old_input')
@@ -170,7 +169,7 @@ class Admin extends CI_Controller
 			'created_at' => date('Y-m-d H:i:s')
 		);
 
-		$created = $this->Admin_user_model->createUser($userData);
+		$created = $this->User_model->createUser($userData);
 
 		if (!$created) {
 			$this->session->set_flashdata('user_form_error', 'Unable to create user at the moment. Please try again.');
@@ -191,7 +190,7 @@ class Admin extends CI_Controller
 			'title' => 'Add Products',
 			'admin_name' => (string) $this->session->userdata('admin_name'),
 			'admin_email' => (string) $this->session->userdata('admin_email'),
-			'recent_products' => $this->Admin_product_model->getRecentProducts(12),
+			'recent_products' => $this->Product_model->getRecentProducts(12),
 			'form_error' => (string) $this->session->flashdata('product_form_error'),
 			'form_success' => (string) $this->session->flashdata('product_form_success'),
 			'old_input' => (array) $this->session->flashdata('product_old_input')
@@ -208,10 +207,40 @@ class Admin extends CI_Controller
 			'title' => 'Order List',
 			'admin_name' => (string) $this->session->userdata('admin_name'),
 			'admin_email' => (string) $this->session->userdata('admin_email'),
-			'orders' => $this->Admin_order_model->getRecentOrdersForAdmin(200)
+			'orders' => $this->Order_model->getRecentOrdersForAdmin(200)
 		);
 
 		$this->load->view('admin/orders_list', $data);
+	}
+
+	public function order_logs($orderId = 0)
+	{
+		$this->requireAuth();
+
+		$orderId = (int) $orderId;
+		if ($orderId < 1) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode(array('logs' => array())));
+			return;
+		}
+
+		$rows = $this->Logs_model->getByOrderId($orderId);
+		$logs = array();
+		foreach ($rows as $row) {
+			$decoded = json_decode($row['logs'], TRUE);
+			$logs[] = array(
+				'id'         => (int) $row['id'],
+				'event'      => isset($decoded['event']) ? $decoded['event'] : 'unknown',
+				'details'    => $decoded,
+				'ip_address' => $row['ip_address'],
+				'created_at' => $row['created_at'],
+			);
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode(array('logs' => $logs)));
 	}
 
 	public function invoice($orderId = 0)
@@ -224,7 +253,7 @@ class Admin extends CI_Controller
 			return;
 		}
 
-		$order = $this->Admin_order_model->getOrderDetailsForAdmin($orderId);
+		$order = $this->Order_model->getOrderDetailsForAdmin($orderId);
 		if (!$order) {
 			show_404();
 			return;
@@ -250,7 +279,7 @@ class Admin extends CI_Controller
 			return;
 		}
 
-		$order = $this->Admin_order_model->getOrderDetailsForAdmin($orderId);
+		$order = $this->Order_model->getOrderDetailsForAdmin($orderId);
 		if (!$order) {
 			show_404();
 			return;
@@ -310,7 +339,7 @@ class Admin extends CI_Controller
 			return;
 		}
 
-		if ($this->Admin_product_model->existsBySlug($slug)) {
+		if ($this->Product_model->existsBySlug($slug)) {
 			$this->session->set_flashdata('product_form_error', 'Slug already exists. Please choose a unique slug.');
 			$this->session->set_flashdata('product_old_input', $oldInput);
 			redirect('admin/products');
@@ -358,7 +387,7 @@ class Admin extends CI_Controller
 			'created_at' => date('Y-m-d H:i:s')
 		);
 
-		$created = $this->Admin_product_model->createProduct($productData);
+		$created = $this->Product_model->createProduct($productData);
 
 		if (!$created) {
 			$this->session->set_flashdata('product_form_error', 'Unable to create product at the moment. Please try again.');

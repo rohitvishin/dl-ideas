@@ -36,6 +36,7 @@
 
                 <?php if (!empty($is_user_logged_in)): ?>
                     <form method="post" action="<?php echo site_url('checkout/place-order/' . $product['slug']); ?>" autocomplete="on">
+                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                         <div class="form-grid">
                             <div class="field">
                                 <label for="first_name">First Name</label>

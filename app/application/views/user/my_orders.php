@@ -12,7 +12,17 @@
 </head>
 <body>
     <main class="shell" role="main">
-        <?php $this->load->view('components/store_nav'); ?>
+        <?php
+            $this->load->view('components/store_nav', array(
+                'nav_brand_tag' => 'My Orders',
+                'nav_show_support' => false,
+                'nav_show_account_dropdown' => false,
+                'nav_links' => array(
+                    array('label' => 'Back to Catalog', 'url' => site_url('user')),
+                    array('label' => 'Logout', 'url' => site_url('logout')),
+                ),
+            ));
+        ?>
 
         <header class="head">
             <div>
@@ -23,62 +33,48 @@
 
         <section class="content">
             <?php if (!empty($orders)): ?>
-                <?php foreach ($orders as $order): ?>
-                    <?php
-                        $createdAt = isset($order['created_at']) ? (string) $order['created_at'] : '';
-                        $createdLabel = $createdAt !== '' ? date('d M Y, h:i A', strtotime($createdAt)) : 'N/A';
-                        $status = strtoupper((string) ($order['status'] ?? 'pending'));
-                        $shippingName = trim((string) ($order['shipping_name'] ?? ''));
-                        $shippingAddress = trim((string) ($order['shipping_address'] ?? ''));
-                        $shippingCity = trim((string) ($order['shipping_city'] ?? ''));
-                        $shippingState = trim((string) ($order['shipping_state'] ?? ''));
-                        $shippingPincode = trim((string) ($order['shipping_pincode'] ?? ''));
-                    ?>
-                    <article class="order">
-                        <div class="order-top">
-                            <div>
-                                <p class="order-id">Order #<?php echo (int) $order['id']; ?></p>
-                                <p class="order-date">Placed on <?php echo html_escape($createdLabel); ?></p>
-                            </div>
-                            <span class="status"><?php echo html_escape($status); ?></span>
-                        </div>
-
-                        <div class="order-body">
-                            <div class="items">
-                                <?php if (!empty($order['items'])): ?>
-                                    <?php foreach ($order['items'] as $item): ?>
-                                        <div class="item">
-                                            <div>
-                                                <p class="item-name"><?php echo html_escape((string) $item['product_name']); ?></p>
-                                                <p class="item-meta">Qty: <?php echo (int) $item['quantity']; ?></p>
-                                            </div>
-                                            <strong>$<?php echo number_format((float) $item['price'], 2); ?></strong>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="item">
-                                        <p class="item-meta">No items found for this order.</p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <aside class="summary">
-                                <p>Payment: <?php echo html_escape((string) ($order['payment_method'] ?? '-')); ?></p>
-                                <div class="amount">$<?php echo number_format((float) ($order['total_amount'] ?? 0), 2); ?></div>
-                                <a class="invoice-link" href="<?php echo site_url('my-orders/invoice/' . (int) $order['id']); ?>">View Invoice</a>
-                                <a class="receipt-link" href="<?php echo site_url('my-orders/receipt/' . (int) $order['id']); ?>">View Receipt</a>
-
-                                <?php if ($shippingAddress !== '' || $shippingCity !== '' || $shippingState !== ''): ?>
-                                    <div class="ship">
-                                        <p><strong>Ship To:</strong> <?php echo html_escape($shippingName !== '' ? $shippingName : 'N/A'); ?></p>
-                                        <p><?php echo html_escape($shippingAddress); ?></p>
-                                        <p><?php echo html_escape(trim($shippingCity . ', ' . $shippingState . ' ' . $shippingPincode)); ?></p>
-                                    </div>
-                                <?php endif; ?>
-                            </aside>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
+                <div class="table-wrap">
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Payment</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($orders as $order): ?>
+                                <?php
+                                    $createdAt = isset($order['created_at']) ? (string) $order['created_at'] : '';
+                                    $createdLabel = $createdAt !== '' ? date('d M Y', strtotime($createdAt)) : 'N/A';
+                                    $status = strtoupper((string) ($order['status'] ?? 'pending'));
+                                    $itemNames = array();
+                                    if (!empty($order['items'])) {
+                                        foreach ($order['items'] as $item) {
+                                            $itemNames[] = html_escape((string) $item['product_name']) . ' &times; ' . (int) $item['quantity'];
+                                        }
+                                    }
+                                ?>
+                                <tr>
+                                    <td><span class="order-id">#<?php echo (int) $order['id']; ?></span></td>
+                                    <td class="order-date"><?php echo html_escape($createdLabel); ?></td>
+                                    <td class="order-items"><?php echo !empty($itemNames) ? implode('<br>', $itemNames) : '<span class="muted">—</span>'; ?></td>
+                                    <td><?php echo html_escape((string) ($order['payment_method'] ?? '-')); ?></td>
+                                    <td><span class="amount">$<?php echo number_format((float) ($order['total_amount'] ?? 0), 2); ?></span></td>
+                                    <td><span class="status"><?php echo html_escape($status); ?></span></td>
+                                    <td class="actions-cell">
+                                        <a class="invoice-link" href="<?php echo site_url('my-orders/invoice/' . (int) $order['id']); ?>">Invoice</a>
+                                        <a class="receipt-link" href="<?php echo site_url('my-orders/receipt/' . (int) $order['id']); ?>">Receipt</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php else: ?>
                 <div class="empty">
                     You have not placed any orders yet.<br>

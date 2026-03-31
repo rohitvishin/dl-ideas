@@ -75,3 +75,8 @@ $route['buy-now/(:any)'] = 'user/buy/$1';
 $route['checkout/place-order/(:any)'] = 'user/placeOrder/$1';
 $route['checkout/success'] = 'user/paymentSuccess';
 $route['checkout/failure'] = 'user/paymentFailure';
+
+// API endpoints (token-based, no session/CSRF)
+$route['api/login'] = 'api/login';
+$route['api/invoices/(:num)'] = 'api/invoices/$1';
+$route['api/receipts/(:num)'] = 'api/receipts/$1';

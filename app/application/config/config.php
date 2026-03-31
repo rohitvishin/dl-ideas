@@ -414,12 +414,12 @@ $config['cookie_samesite'] 	= 'Lax';
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = FALSE;
+$config['csrf_protection'] = TRUE;
 $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = TRUE;
-$config['csrf_exclude_uris'] = array();
+$config['csrf_exclude_uris'] = array('api/login', 'api/invoices/[0-9]+', 'api/receipts/[0-9]+');
 
 /*
 |--------------------------------------------------------------------------
@@ -507,8 +507,8 @@ $config['db_default'] = $db_config['default'];
 | MAIL / SMTP CONFIGURATION
 |--------------------------------------------------------------------------
 */
-$config['smtp_user'] = 'rohitvishwakarma65@gmail.com';
-$config['smtp_pass'] = 'skxpoawkmkxunqvh';
+$config['smtp_user'] = '';
+$config['smtp_pass'] = '';
 $config['smtp_host'] = 'smtp.gmail.com';
 $config['smtp_port'] = 587;
 $config['smtp_crypto'] = 'tls';

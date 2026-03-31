@@ -16,7 +16,7 @@
                     <div class="row g-0">
                         <div class="col-md-6 text-white bg-dark bg-gradient d-flex flex-column justify-content-center p-4 p-lg-5">
                             <span class="badge bg-light bg-opacity-25 text-white rounded-pill px-3 py-2 mb-3 align-self-start text-uppercase fw-bold small">Platform Login</span>
-                            <h1 class="fw-bold mb-3">Secure access for administrators and users.</h1>
+                            <h1 class="fw-bold mb-3">Secure Login</h1>
                             <p class="text-white-50 mb-0">Sign in with your credentials. Admin accounts open the dashboard, while user accounts go to the product listing.</p>
                         </div>
 

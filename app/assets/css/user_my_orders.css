@@ -79,8 +79,6 @@
 
         .content {
             padding: 18px;
-            display: grid;
-            gap: 12px;
         }
 
         .empty {
@@ -93,42 +91,77 @@
             line-height: 1.7;
         }
 
-        .order {
+        .table-wrap {
+            overflow-x: auto;
             border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
+            border-radius: 14px;
             background: #ffffff;
         }
 
-        .order-top {
-            padding: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-            border-bottom: 1px solid var(--border);
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .order-table thead {
             background: #f7fbf9;
         }
 
-        .order-id {
-            margin: 0;
-            font-size: 14px;
-            letter-spacing: 0.02em;
+        .order-table th {
+            padding: 12px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
             color: var(--muted);
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .order-table td {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .order-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .order-table tbody tr:hover {
+            background: #f9fcfb;
+        }
+
+        .order-id {
+            font-size: 14px;
             font-weight: 800;
+            letter-spacing: 0.02em;
+            color: var(--text);
+            white-space: nowrap;
         }
 
         .order-date {
-            margin: 4px 0 0;
+            color: var(--muted);
             font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .order-items {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .muted {
             color: var(--muted);
         }
 
         .status {
+            display: inline-block;
             border-radius: 999px;
-            padding: 6px 10px;
+            padding: 5px 10px;
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.06em;
@@ -136,101 +169,48 @@
             background: var(--chip);
             color: var(--accent-strong);
             border: 1px solid rgba(11, 118, 111, 0.2);
+            white-space: nowrap;
         }
 
-        .order-body {
-            padding: 14px;
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 14px;
+        .amount {
+            font-size: 15px;
+            letter-spacing: -0.02em;
+            font-weight: 800;
+            color: var(--accent-strong);
+            white-space: nowrap;
         }
 
-        .items {
-            display: grid;
-            gap: 8px;
-        }
-
-        .item {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 10px 12px;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            background: #fcfefe;
-        }
-
-        .item-name {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 700;
-        }
-
-        .item-meta {
-            margin: 4px 0 0;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .summary {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px;
-            background: #fbfdfd;
-        }
-
-        .summary p {
-            margin: 0 0 8px;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.6;
+        .actions-cell {
+            white-space: nowrap;
         }
 
         .invoice-link {
-            margin-top: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
             border-radius: 999px;
-            padding: 8px 12px;
+            padding: 6px 12px;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             font-weight: 800;
             color: #ffffff;
             background: linear-gradient(145deg, var(--accent), #168568);
-            box-shadow: 0 10px 18px rgba(11, 118, 111, 0.22);
+            box-shadow: 0 4px 10px rgba(11, 118, 111, 0.18);
         }
 
         .receipt-link {
-            margin-top: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
+            margin-left: 4px;
             border-radius: 999px;
-            padding: 8px 12px;
+            padding: 6px 12px;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             font-weight: 800;
             color: #0b5f58;
             background: #e9f7f5;
             border: 1px solid rgba(11, 118, 111, 0.25);
-        }
-
-        .amount {
-            font-size: 24px;
-            letter-spacing: -0.03em;
-            font-weight: 800;
-            color: var(--accent-strong);
-        }
-
-        .ship {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed rgba(23, 50, 62, 0.22);
         }
 
         @media (max-width: 760px) {
@@ -246,7 +226,19 @@
                 padding: 16px;
             }
 
-            .order-body {
-                grid-template-columns: 1fr;
+            .order-table th,
+            .order-table td {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            .actions-cell {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .receipt-link {
+                margin-left: 0;
             }
         }

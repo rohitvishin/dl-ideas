@@ -11,13 +11,14 @@ class User extends CI_Controller
         $this->load->library('session');
         $this->load->helper('url');
         $this->load->config('stripe', TRUE);
-        $this->load->model('Admin_product_model');
-        $this->load->model('Admin_order_model');
+        $this->load->model('Product_model');
+        $this->load->model('Order_model');
+        $this->load->model('Logs_model');
     }
 
     public function index()
     {
-        $products = $this->Admin_product_model->getCatalogProducts();
+        $products = $this->Product_model->getCatalogProducts();
         $isAdminLoggedIn = (bool) $this->session->userdata('admin_logged_in');
         $isUserLoggedIn = (bool) $this->session->userdata('user_logged_in');
         $isLoggedIn = $isAdminLoggedIn || $isUserLoggedIn;
@@ -75,7 +76,7 @@ class User extends CI_Controller
             return;
         }
 
-        $product = $this->Admin_product_model->findActiveProductBySlug($slug);
+        $product = $this->Product_model->findActiveProductBySlug($slug);
 
         if (!$product) {
             show_404();
@@ -108,11 +109,7 @@ class User extends CI_Controller
             'user_logged_in',
             'user_id',
             'user_name',
-            'user_email',
-            'admin_logged_in',
-            'admin_id',
-            'admin_name',
-            'admin_email'
+            'user_email'
         ));
 
         $this->session->sess_regenerate(TRUE);
@@ -149,7 +146,7 @@ class User extends CI_Controller
             return;
         }
 
-        $product = $this->Admin_product_model->findActiveProductBySlug($slug);
+        $product = $this->Product_model->findActiveProductBySlug($slug);
         if (!$product) {
             show_404();
             return;
@@ -345,6 +342,14 @@ class User extends CI_Controller
                 $finalError = 'Unable to start payment: ' . $curlError;
             }
 
+            // Log failed Stripe checkout attempt
+            $this->Logs_model->insert('stripe_checkout_failed', array(
+                'product_id'  => (int) $product['id'],
+                'slug'        => $slug,
+                'http_status' => $statusCode,
+                'error'       => $finalError,
+            ), $this->session->userdata('user_id'));
+
             $this->session->set_flashdata('purchase_notice', $finalError);
             redirect('buy-now/' . $slug);
             return;
@@ -356,6 +361,16 @@ class User extends CI_Controller
             redirect('buy-now/' . $slug);
             return;
         }
+
+        // Log successful Stripe checkout session creation
+        $this->Logs_model->insert('stripe_checkout_created', array(
+            'product_id'        => (int) $product['id'],
+            'slug'              => $slug,
+            'quantity'          => $quantity,
+            'unit_amount'       => $unitAmount,
+            'currency'          => $currencyCode,
+            'stripe_session_id' => isset($response['id']) ? $response['id'] : '',
+        ), $this->session->userdata('user_id'));
 
         redirect($response['url']);
     }
@@ -370,10 +385,10 @@ class User extends CI_Controller
             return;
         }
 
-        $this->load->model('Admin_order_model');
+        $this->load->model('Order_model');
 
         // Idempotency: if already processed, skip insertion
-        $alreadyProcessed = $this->Admin_order_model->orderExistsByStripeSession($sessionId);
+        $alreadyProcessed = $this->Order_model->orderExistsByStripeSession($sessionId);
 
         if (!$alreadyProcessed) {
             $secretKey = (string) $this->config->item('stripe_secret_key', 'stripe');
@@ -496,7 +511,20 @@ class User extends CI_Controller
                             'price'      => $unitPrice,
                         ));
 
-                        $this->Admin_product_model->decrementStock($productId, $quantity);
+                        $this->Product_model->decrementStock($productId, $quantity);
+                    }
+
+                    // Log successful Stripe payment and order creation
+                    if ($orderId > 0) {
+                        $this->Logs_model->insert('stripe_payment_success', array(
+                            'stripe_session_id'        => $sessionId,
+                            'stripe_payment_intent_id' => $paymentIntentId,
+                            'stripe_charge_id'         => $chargeId,
+                            'product_id'               => $productId,
+                            'quantity'                 => $quantity,
+                            'unit_price'               => $unitPrice,
+                            'total_amount'             => $totalAmount,
+                        ), $userId, $orderId);
                     }
 
                     // Send order confirmation email to checkout email entered by user.
@@ -543,7 +571,7 @@ class User extends CI_Controller
             'title' => 'My Orders',
             'account_name' => (string) $this->session->userdata('user_name'),
             'account_email' => (string) $this->session->userdata('user_email'),
-            'orders' => $this->Admin_order_model->getOrdersForUser($userId, 100),
+            'orders' => $this->Order_model->getOrdersForUser($userId, 100),
         );
 
         $this->load->view('user/my_orders', $data);
@@ -572,7 +600,7 @@ class User extends CI_Controller
         }
 
         $userId = (int) $this->session->userdata('user_id');
-        $order = $this->Admin_order_model->getOrderDetailsForUser($orderId, $userId);
+        $order = $this->Order_model->getOrderDetailsForUser($orderId, $userId);
         if (!$order) {
             show_404();
             return;
@@ -611,7 +639,7 @@ class User extends CI_Controller
         }
 
         $userId = (int) $this->session->userdata('user_id');
-        $order = $this->Admin_order_model->getOrderDetailsForUser($orderId, $userId);
+        $order = $this->Order_model->getOrderDetailsForUser($orderId, $userId);
         if (!$order) {
             show_404();
             return;
