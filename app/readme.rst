@@ -334,7 +334,7 @@ requests, the following measures are applied or recommended:
 API considerations for mobile applications
 -------------------------------------------
 
-If a REST API were to be built on top of this CodeIgniter 2 project for
+If a REST API were to be built on top of this CodeIgniter 3 project for
 mobile consumption, the following factors must be addressed:
 
 **Authentication and authorisation**
@@ -361,7 +361,7 @@ mobile consumption, the following factors must be addressed:
 * Implement rate limiting per API key / token to prevent abuse.
 * Use CORS headers only if a web SPA also consumes the same API.
 
-**Limitations of CodeIgniter 2**
+**Limitations of CodeIgniter 3**
 
 * CI2 has no built-in REST controller. A third-party library such as
   ``chriskacerguis/codeigniter-restserver`` would be needed, or upgrade to
@@ -446,7 +446,7 @@ Additional tools and libraries
 
 **Currently used**
 
-* **CodeIgniter 2.x** — PHP MVC framework providing routing, controllers,
+* **CodeIgniter 3.x** — PHP MVC framework providing routing, controllers,
   models, views, form validation, database abstraction, and session
   management.
 * **Bootstrap 5.3** — Front-end CSS framework used for responsive layout
