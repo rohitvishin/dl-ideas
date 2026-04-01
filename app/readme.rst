@@ -251,6 +251,8 @@ ER Diagram
 
 The database contains six tables. Relationships are shown below.
 
+ER diagram: 
+https://asset.cloudinary.com/dndfmewv4/a6bbe80f6a428eb88d8a8b7e069cc5c0
 
 Relationships:
 

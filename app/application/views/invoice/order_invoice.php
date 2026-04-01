@@ -321,7 +321,7 @@
     <main class="invoice" role="main">
         <header class="header">
             <section class="brand">
-                <h1>Ecom Nova Invoice</h1>
+                <h1>DL Ideas Invoice</h1>
                 <p>Secure commerce billing statement</p>
             </section>
             <section class="meta">

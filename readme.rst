@@ -1,4 +1,4 @@
-# Ecom Nova — CodeIgniter E-Commerce App
+# DL Ideas — CodeIgniter E-Commerce App
 
 A simple e-commerce web application built with **CodeIgniter 3**, **MySQL**, and **Stripe** payments, running fully inside **Docker**.
 

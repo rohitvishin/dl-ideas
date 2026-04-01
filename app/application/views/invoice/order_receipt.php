@@ -210,7 +210,7 @@
         <header class="head">
             <div>
                 <h1>Payment Receipt</h1>
-                <p>Ecom Nova</p>
+                <p>DL Ideas</p>
             </div>
             <div class="meta">
                 <div><strong>Receipt #</strong> RCPT-<?php echo str_pad((string) ((int) $order['id']), 6, '0', STR_PAD_LEFT); ?></div>

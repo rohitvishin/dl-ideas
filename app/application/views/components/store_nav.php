@@ -9,10 +9,10 @@ $account_label = ($user_name !== '') ? $user_name : 'Account';
 <link rel="stylesheet" href="<?php echo base_url('assets/css/store_nav.css'); ?>">
 
 <header class="nav" role="banner">
-	<a class="logo-link" href="<?php echo $is_logged_in ? site_url('user') : site_url('login'); ?>" aria-label="Ecom Nova home">
-		<span class="logo-mark" aria-hidden="true">EC</span>
+	<a class="logo-link" href="<?php echo $is_logged_in ? site_url('user') : site_url('login'); ?>" aria-label="DL Ideas home">
+		<span class="logo-mark" aria-hidden="true">DL</span>
 		<span class="logo-copy">
-			<span class="logo-title">Ecom Nova</span>
+			<span class="logo-title">DL Ideas</span>
 			<span class="logo-tag">Online Store</span>
 		</span>
 	</a>

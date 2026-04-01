@@ -708,19 +708,85 @@ class User extends CI_Controller
 
         $this->load->library('email');
         $this->email->initialize($mailConfig);
-        $this->email->from($smtpUser, 'Ecom Nova');
+        $this->email->from($smtpUser, 'DL Ideas');
         $this->email->to($toEmail);
         $this->email->subject('Order Confirmation #' . $orderId);
 
-        $message = '<h2>Payment Successful</h2>'
-            . '<p>Your order has been placed successfully.</p>'
-            . '<p><strong>Order ID:</strong> #' . (int) $orderId . '</p>'
-            . '<p><strong>Total Paid:</strong> $' . number_format($totalAmount, 2) . '</p>'
-            . '<p><strong>Payment Method:</strong> ' . html_escape($paymentMethod) . '</p>'
-            . '<p><strong>Transaction ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : ($paymentIntentId !== '' ? $paymentIntentId : $sessionId)) . '</p>'
-            . '<p><strong>Payment Intent ID:</strong> ' . html_escape($paymentIntentId !== '' ? $paymentIntentId : 'N/A') . '</p>'
-            . '<p><strong>Charge ID:</strong> ' . html_escape($chargeId !== '' ? $chargeId : 'N/A') . '</p>'
-            . '<p><a href="' . html_escape($receiptUrl) . '">View Receipt</a> | <a href="' . html_escape($invoiceUrl) . '">View Invoice</a></p>';
+        $transactionId = html_escape($chargeId !== '' ? $chargeId : ($paymentIntentId !== '' ? $paymentIntentId : $sessionId));
+
+        $message = '<!DOCTYPE html>'
+            . '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>'
+            . '<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,Helvetica,sans-serif;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f4f7;padding:32px 0;">'
+            . '<tr><td align="center">'
+            . '<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">'
+
+            // Header
+            . '<tr><td style="background-color:#4f46e5;padding:32px 40px;text-align:center;">'
+            . '<h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">DL Ideas</h1>'
+            . '</td></tr>'
+
+            // Success icon and heading
+            . '<tr><td style="padding:40px 40px 0;text-align:center;">'
+            . '<div style="width:64px;height:64px;margin:0 auto 16px;background-color:#ecfdf5;border-radius:50%;line-height:64px;font-size:32px;">&#10003;</div>'
+            . '<h2 style="margin:0 0 8px;font-size:22px;color:#111827;">Payment Successful</h2>'
+            . '<p style="margin:0;font-size:15px;color:#6b7280;">Thank you for your purchase! Your order has been confirmed.</p>'
+            . '</td></tr>'
+
+            // Order summary card
+            . '<tr><td style="padding:32px 40px;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">'
+            . '<tr><td style="padding:20px 24px;border-bottom:1px solid #e5e7eb;">'
+            . '<h3 style="margin:0;font-size:14px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Order Summary</h3>'
+            . '</td></tr>'
+
+            . '<tr><td style="padding:16px 24px;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0">'
+            . '<tr>'
+            . '<td style="padding:8px 0;font-size:14px;color:#6b7280;">Order ID</td>'
+            . '<td style="padding:8px 0;font-size:14px;color:#111827;text-align:right;font-weight:600;">#' . (int) $orderId . '</td>'
+            . '</tr>'
+            . '<tr>'
+            . '<td style="padding:8px 0;font-size:14px;color:#6b7280;">Payment Method</td>'
+            . '<td style="padding:8px 0;font-size:14px;color:#111827;text-align:right;">' . html_escape(ucfirst($paymentMethod)) . '</td>'
+            . '</tr>'
+            . '<tr>'
+            . '<td style="padding:8px 0;font-size:14px;color:#6b7280;">Transaction ID</td>'
+            . '<td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;word-break:break-all;">' . $transactionId . '</td>'
+            . '</tr>'
+            . '<tr><td colspan="2" style="padding:8px 0;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"></td></tr>'
+            . '<tr>'
+            . '<td style="padding:8px 0;font-size:16px;color:#111827;font-weight:700;">Total Paid</td>'
+            . '<td style="padding:8px 0;font-size:16px;color:#4f46e5;text-align:right;font-weight:700;">$' . number_format($totalAmount, 2) . '</td>'
+            . '</tr>'
+            . '</table>'
+            . '</td></tr>'
+            . '</table>'
+            . '</td></tr>'
+
+            // CTA buttons
+            . '<tr><td style="padding:0 40px 32px;text-align:center;">'
+            . '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">'
+            . '<tr>'
+            . '<td style="padding-right:12px;">'
+            . '<a href="' . html_escape($receiptUrl) . '" style="display:inline-block;padding:12px 24px;background-color:#4f46e5;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">View Receipt</a>'
+            . '</td>'
+            . '<td>'
+            . '<a href="' . html_escape($invoiceUrl) . '" style="display:inline-block;padding:12px 24px;background-color:#ffffff;color:#4f46e5;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;border:1px solid #4f46e5;">View Invoice</a>'
+            . '</td>'
+            . '</tr>'
+            . '</table>'
+            . '</td></tr>'
+
+            // Footer
+            . '<tr><td style="padding:24px 40px;background-color:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">'
+            . '<p style="margin:0 0 4px;font-size:13px;color:#9ca3af;">If you have any questions, reply to this email or contact our support team.</p>'
+            . '<p style="margin:0;font-size:12px;color:#d1d5db;">&copy; ' . date('Y') . ' DL Ideas. All rights reserved.</p>'
+            . '</td></tr>'
+
+            . '</table>'
+            . '</td></tr></table>'
+            . '</body></html>';
 
         $this->email->message($message);
 
