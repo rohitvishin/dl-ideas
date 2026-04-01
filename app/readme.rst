@@ -1,3 +1,52 @@
+---
+## Database
+
+The database connection is pre-configured for the Docker environment in `app/application/config/database.php`:
+
+```php
+$db['default']['hostname'] = 'db';
+$db['default']['username'] = 'ci_user';
+$db['default']['password'] = 'ci_pass';
+$db['default']['database'] = 'ci_db';
+```
+
+To open a MySQL shell directly:
+
+```
+docker exec -it ci_db mysql -u ci_user -p
+```
+
+## Stripe configuration
+--------------------
+
+Update the Stripe config file:
+
+* ``application/config/stripe.php``
+
+Required values:
+
+* ``stripe_secret_key``: your Stripe secret key (for example, ``sk_test_...``)
+* ``stripe_currency``: currency code used for payments (default: ``usd``)
+
+for my stripe keys please check mail 
+---------------------------------------
+
+## Email Configuration (Gmail SMTP)
+
+Order confirmation emails are sent via Gmail SMTP. Set these environment variables in `docker-compose.yml` under the `app` service:
+
+config/config.php
+
+```
+  SMTP_USER: your_gmail@gmail.com
+  SMTP_PASS: your_gmail_app_password
+```
+
+> Use a [Gmail App Password](https://myaccount.google.com/apppasswords), not your normal Gmail password.
+> If these variables are not set, emails are skipped silently.
+
+---
+
 Run migrations and seeders
 --------------------------
 
@@ -58,25 +107,6 @@ Checkout behavior
 * Checkout starts from ``/buy-now/{product-slug}`` and posts to ``/checkout/place-order/{product-slug}``.
 * The backend creates a Stripe Checkout Session and redirects to the Stripe-hosted payment page.
 
-Stripe configuration
---------------------
-
-Update the Stripe config file:
-
-* ``application/config/stripe.php``
-
-Required values:
-
-* ``stripe_secret_key``: your Stripe secret key (for example, ``sk_test_...``)
-* ``stripe_currency``: currency code used for payments (default: ``usd``)
-
-Routes used by checkout
------------------------
-
-* ``buy-now/(:any)`` -> ``user/buy/$1``
-* ``checkout/place-order/(:any)`` -> ``user/placeOrder/$1``
-* ``checkout/success`` -> ``user/paymentSuccess``
-* ``checkout/failure`` -> ``user/paymentFailure``
 
 What data is collected in checkout form
 ---------------------------------------
@@ -90,6 +120,8 @@ The checkout form collects:
 The backend validates required fields and email format before creating the Stripe session.
 
 ------------------------
+**Test card for Stripe Checkout:**
+
 DUMMY CREDIT CARD
 NUMBER: 378282246310005
 EXPIRY: 08/28
@@ -106,14 +138,7 @@ Test flow
 5. Complete payment with Stripe test cards.
 6. Verify redirect to success/cancel page.
 7. Check for order confirmation email (if email is configured).
-
-Troubleshooting
----------------
-
-* If checkout does not redirect, check the purchase notice shown on checkout page.
-* If Stripe reports invalid request parameters, confirm that required shipping fields are filled.
-* In local non-production environments, the app retries once without SSL verification when CA certs are missing.
-
+8. View order in ``/my-orders`` and check invoice/receipt.
 
 REST API
 --------
